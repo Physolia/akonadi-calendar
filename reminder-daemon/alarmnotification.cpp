@@ -32,7 +32,6 @@ void AlarmNotification::send(KalendarAlarmClient *client, const KCalendarCore::I
     const bool notificationExists = m_notification;
     if (!notificationExists) {
         m_notification = new KNotification(QStringLiteral("alarm"));
-        m_notification->setFlags(KNotification::Persistent);
 
         // dismiss both with the explicit action and just closing the notification
         // there is no signal for explicit closing though, we only can observe that
@@ -56,6 +55,14 @@ void AlarmNotification::send(KalendarAlarmClient *client, const KCalendarCore::I
     m_notification->setTitle(incidence->summary());
     m_notification->setText(m_text);
     m_notification->setDefaultAction(i18n("View"));
+
+    bool eventHasEnded = false;
+    if (incidence->type() == KCalendarCore::Incidence::TypeEvent) {
+        const auto event = incidence.staticCast<KCalendarCore::Event>();
+        const auto eventEndTime = startTime.addSecs(event->dtStart().secsTo(event->dtEnd()));
+        eventHasEnded = eventEndTime < QDateTime::currentDateTime();
+    }
+    m_notification->setFlags(eventHasEnded ? KNotification::CloseOnTimeout : KNotification::Persistent);
 
     if (!m_text.isEmpty() && m_text != incidence->summary()) { // MS Teams sometimes repeats the summary as the alarm text, we don't need that
         m_notification->setText(m_text);
